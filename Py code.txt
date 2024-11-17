@@ -1,0 +1,219 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from scipy.stats import pearsonr
+from sklearn import metrics
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split
+from mlxtend.plotting import plot_confusion_matrix
+from sklearn.feature_selection import mutual_info_classif
+from sklearn.feature_selection import SelectKBest
+from sklearn.feature_selection import chi2
+from imblearn.under_sampling import NearMiss
+from sklearn.preprocessing import StandardScaler
+from tqdm import tqdm
+from sklearn.model_selection import train_test_split, cross_validate
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import classification_report
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import confusion_matrix
+from sklearn.linear_model import LogisticRegression
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.model_selection import KFold
+from sklearn.metrics import accuracy_score
+#from IPython.display import display
+from sklearn.model_selection import KFold, cross_val_score
+from sklearn.metrics import make_scorer, accuracy_score, precision_score, recall_score, f1_score
+from sklearn.model_selection import cross_validate
+
+#-----------------------------------------------------------------
+#data and convert numbers of G3 to 0 and 1
+#------------------------------------------------------------------
+df = pd.read_excel('d:\\student1.xlsx',sheet_name='Sheet1')
+#print(df)
+column_name='G3'
+selected_column=df[column_name]
+print(selected_column)
+grade=[]
+for i in selected_column:
+    if(i<10):
+        i=0
+    if(i>=10):
+        i=1
+    grade.append(i)
+print(grade)
+to_drop=['G3']
+df.drop(columns=to_drop, inplace=True)
+print(df)
+data=pd.DataFrame({'G3':grade})
+x=[df,data]
+df=pd.concat(x,axis=1)
+print(df)
+#-------------------------------------------------
+#draw bar and pie chart
+#----------------------------------------------------
+number1=0
+number2=0
+for i in selected_column:
+    if(i<10):
+        number1+=1
+    if(i>=1):
+        number2+=1
+print(number1)
+print(number2)
+number=[0, 1]
+counts=(number1,number2)
+
+number3=['Pass', 'Fall']
+colors=['blue', 'red']
+
+#------------------------------------------------------------
+#              Histogram
+#-----------------------------------------------------------------
+
+#-----------------------------------------------------------------
+#               transform variables
+#-----------------------------------------------------------------
+df['school'] = df['school'].map({"GP":1,"MS":2})
+df['sex'] = df['sex'].map({"F":1,"M":2})
+df['address'] = df['address'].map({"R":1,"U":2})
+df['famsize'] = df['famsize'].map({"GT3":1,"LE3":2})
+df['Pstatus'] = df['Pstatus'].map({"A":1,"T":2})
+df['Mjob'] = df['Mjob'].map({"at_home":1,"health":2,"other":3,"services":4,"teacher":5})
+df['Fjob'] = df['Fjob'].map({"at_home":1,"health":2,"other":3,"services":4,"teacher":5})
+df['reason'] = df['reason'].map({"course":1,"other":3,"home":2,"reputation":4})
+df['guardian'] = df['guardian'].map({"father":1,"mother":2,"other":3})
+
+df['schoolsup'] = df['schoolsup'].map({"yes":1,"no":2})
+df['famsup'] = df['famsup'].map({"yes":1,"no":2})
+df['paid'] = df['paid'].map({"yes":1,"no":2})
+df['activities'] = df['activities'].map({"yes":1,"no":2})
+df['nursery'] = df['nursery'].map({"yes":1,"no":2})
+df['higher'] = df['higher'].map({"yes":1,"no":2})
+df['internet'] = df['internet'].map({"yes":1,"no":2})
+df['romantic'] = df['romantic'].map({"yes":1,"no":2})
+#df['G3'] = df['G3'].map({"A":1,"b":1,"c":1,"D":1,"F":0})
+print(df)
+
+#------------------------------------------------------
+#------------------------------------------------------
+#           ****  new part of code  ****
+#------------------------------------------------------
+#------------------------------------------------------
+
+df_features = df.drop("G3",axis=1)
+df_target = df["G3"]
+#print(df_target.value_counts())
+#-----------------------------------------------------------------
+#                  Mutual Information
+#-----------------------------------------------------------------
+threshold = 10
+high_score_features_mic = []
+feature_scores = mutual_info_classif(df_features, df_target, random_state=0)
+feature_scores_table =pd.DataFrame({'Variables': df_features.columns,'Mutual Information': feature_scores})
+for score, f_name in sorted(zip(feature_scores, df_features.columns), reverse=True)[:threshold]:
+        high_score_features_mic.append(f_name)
+feature_scores_table = feature_scores_table.sort_values(by='Mutual Information', ascending=False)
+print(feature_scores_table)
+#-----------------------------------------------------------------
+#                  Chi-Squared
+#-----------------------------------------------------------------
+skb = SelectKBest(score_func=chi2, k=threshold)
+sel_skb = skb.fit(df_features, df_target)
+sel_skb_index = sel_skb.get_support()
+sel_skb_index_table =pd.DataFrame({'Variables': df_features.columns,'stat': skb.scores_,
+                                 'p value': skb.pvalues_})
+df_norm_skb = df_features.iloc[:, sel_skb_index]
+high_score_features_skb = list(df_norm_skb.columns)
+sel_skb_index_table = sel_skb_index_table.sort_values(by='stat', ascending=False)
+print(sel_skb_index_table)
+#----------------------------------------------------------------
+#                  Pearson Correlation
+#-----------------------------------------------------------------
+pearson_list = []
+for l in list(df_features.columns):
+    p,_ = pearsonr(df_features[l], df_target)
+    pearson_list.append(abs(p))
+p_value=pd.Series(pearson_list,index=df_features.columns)
+pearson_table=pd.DataFrame({'Variables': df_features.columns,'corr': pearson_list})
+p_value.sort_values(ascending=False,inplace=True)
+high_score_features_pearson = list(p_value.index[:threshold])
+pearson_table = pearson_table.sort_values(by='corr', ascending=False)
+print(pearson_table)
+#-----------------------------------------------------------------
+#                  Best of all
+#-----------------------------------------------------------------
+high_score_features = []
+for h in  high_score_features_mic:
+    if h in high_score_features_skb and h in high_score_features_pearson:
+        high_score_features.append(h)
+#-----------------------------------------------------------------
+#print(high_score_features_mic)
+#print(high_score_features_skb)
+#print(high_score_features_pearson)
+#print(high_score_features)
+#-----------------------------------------------------------------
+y = df_target
+
+features_list = [
+    ["all",df_features],
+    ["mic 10", df_features[high_score_features_mic]],
+    ["skb 10", df_features[high_score_features_skb]],
+    ["pearson 10", df_features[high_score_features_pearson]],
+    ["best 6", df_features[high_score_features]]
+]
+
+#-----------------------------------------------------
+#     new abolfazl
+#-----------------------------------------------------
+scoring = ['accuracy','precision', 'recall', 'f1']
+k_folds = KFold(n_splits = 2)
+inf=[df_features,df_features[high_score_features_mic],df_features[high_score_features_skb],
+     df_features[high_score_features_pearson],df_features[high_score_features]]
+for X in inf:
+    scores_LR = cross_validate(LogisticRegression(solver='liblinear', C=0.05,random_state=0),
+                           X, y,cv = k_folds,scoring=scoring)
+    scores_RF =cross_validate(RandomForestClassifier(max_depth=5,n_estimators=100, class_weight='balanced'),
+                          X,y,cv = k_folds,scoring=scoring)
+    scores_DT =cross_validate(DecisionTreeClassifier(max_depth=5),
+                          X, y,cv = k_folds,scoring=scoring)
+    scores_KNN =cross_validate(KNeighborsClassifier(n_neighbors= 6),
+                           X, y,cv = k_folds,scoring=scoring)
+    scores_SVM =cross_validate(SVC(probability=True),
+                           X, y,cv = k_folds,scoring=scoring)
+    scores_NB =cross_validate(GaussianNB(),X, y,cv = k_folds,scoring=scoring)
+#--------------------------------------------------------------------
+    metric_ACU=pd.DataFrame({np.mean(scores_LR['test_accuracy']),np.mean(scores_RF['test_accuracy']),
+                         np.mean(scores_DT['test_accuracy']),np.mean(scores_KNN['test_accuracy']),
+                         np.mean(scores_SVM['test_accuracy']),np.mean(scores_NB['test_accuracy'])})
+    metric_prec=pd.DataFrame({np.mean(scores_LR['test_precision']),np.mean(scores_RF['test_precision']),
+                         np.mean(scores_DT['test_precision']),np.mean(scores_KNN['test_precision']),
+                         np.mean(scores_SVM['test_precision']),np.mean(scores_NB['test_precision'])})
+    metric_rec=pd.DataFrame({np.mean(scores_LR['test_recall']),np.mean(scores_RF['test_recall']),
+                         np.mean(scores_DT['test_recall']),np.mean(scores_KNN['test_recall']),
+                         np.mean(scores_SVM['test_recall']),np.mean(scores_NB['test_recall'])})
+    metric_f1=pd.DataFrame({np.mean(scores_LR['test_f1']),np.mean(scores_RF['test_f1']),
+                         np.mean(scores_DT['test_f1']),np.mean(scores_KNN['test_f1']),
+                         np.mean(scores_SVM['test_f1']),np.mean(scores_NB['test_f1'])})
+
+    frames = [metric_ACU,metric_prec,metric_rec,metric_f1]
+    result = pd.concat(frames, axis=1)
+    result.columns =['Accuracy','Precision','Recall','F-measure']
+    result.index = ['LR', 'RF','DT','KNN','SVM','NB']
+    print(result)
+
