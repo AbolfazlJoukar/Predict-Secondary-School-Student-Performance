@@ -179,7 +179,7 @@ features_list = [
 ]
 
 #-----------------------------------------------------
-#     new abolfazl
+#     new 
 #-----------------------------------------------------
 scoring = ['accuracy','precision', 'recall', 'f1']
 k_folds = KFold(n_splits = 2)
